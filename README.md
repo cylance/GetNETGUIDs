@@ -6,7 +6,7 @@ http://blog.cylance.com/you-me-and-.net-guids
 
 ## Help Menu
 
-```bash
+```
 $ getnetguids -h
 usage: getnetguids [-h] [-v] [-r] [path [path ...]]
 
