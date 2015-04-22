@@ -20,6 +20,6 @@ optional arguments:
   -v, --version    show program's version number and exit
   -r, --recursive  Scan paths recursively
 
-getnetguids v1.0.0 by Brian Wallace (@botnet_hunter)
+getnetguids v1.1.0 by Brian Wallace (@botnet_hunter)
 
 ```
