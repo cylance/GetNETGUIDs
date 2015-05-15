@@ -3,7 +3,7 @@
 from distutils.core import setup
 
 setup(name='getnetguids',
-      version='1.1.0',
+      version='1.2.0',
       description='Extracts Typelib IDs and MVIDs from .NET assemblies.',
       author='Brian Wallace',
       url='https://github.com/bwall/getnetguids',
