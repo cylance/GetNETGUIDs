@@ -9,8 +9,8 @@ guid_regex = re.compile("[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9
 def format_guid_from_hex(hex_string):
     first = hex_string[6:8] + hex_string[4:6] + hex_string[2:4] + hex_string[:2]
     second = hex_string[10:12] + hex_string[8:10]
-    return "{0}-{1}-{2}-{3}-{4}".format(first, second, hex_string[12:16], hex_string[16:20],
-                                        hex_string[20:])
+    third = hex_string[14:16] + hex_string[12:14]
+    return "{0}-{1}-{2}-{3}-{4}".format(first, second, third, hex_string[16:20], hex_string[20:])
 
 
 def read_blob(blob):
