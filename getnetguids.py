@@ -168,7 +168,7 @@ def get_assembly_guids(assembly_path):
 if __name__ == "__main__":
     from argparse import ArgumentParser
 
-    version = "1.2.0"
+    version = "1.3.0"
 
     parser = ArgumentParser(
         prog=__file__,
@@ -222,4 +222,4 @@ if __name__ == "__main__":
         with open(file_path, 'rb') as f:
             s = hashlib.sha256(f.read()).hexdigest()
 
-        print "{0}\t{1}\t{2}".format(typelib_id, mvid, s)
+        print "{0}\t{1}\t{2}\t{3}".format(typelib_id, mvid, s, file_path)
