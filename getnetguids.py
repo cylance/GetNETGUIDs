@@ -36,6 +36,13 @@ def get_assembly_guids(assembly_path):
     try:
         try:
             pe = pefile.PE(assembly_path)
+
+            txt_start = None
+            txt_end = None
+            for section in pe.sections:
+                if section.Name.startswith(".text\x00"):
+                    txt_start = section.PointerToRawData
+                    txt_end = txt_start + section.SizeOfRawData
         except pefile.PEFormatError:
             return None
         if not is_dot_net_assembly(pe):
@@ -44,9 +51,27 @@ def get_assembly_guids(assembly_path):
         # Removed strict parsing and opted for simple searching method to support malformed assemblies
         with open(assembly_path, "rb") as assembly_file_handler:
             file_data = assembly_file_handler.read()
-        for i in [file_data[l.start():] for l in re.finditer("\x42\x53\x4a\x42", file_data)]:
+
+        text_section = file_data[txt_start:][:txt_end]
+
+
+        mdo = pe.get_offset_from_rva(struct.unpack("<IHHI", text_section[8:][:12])[-1])
+
+        if mdo < txt_start:
+            offsets_to_test = [mdo]
+        else:
+            offsets_to_test = [mdo - txt_start]
+
+        offsets_to_test.extend([l.start() for l in re.finditer("\x42\x53\x4a\x42", text_section)][::-1])
+
+        del file_data
+
+        for i_offset in offsets_to_test:
+            i = text_section[i_offset:]
             try:
                 if "\x42\x53\x4a\x42" not in i:
+                    continue
+                if not i.startswith("\x42\x53\x4a\x42"):
                     continue
                 meta_data_offset = i.find("\x42\x53\x4a\x42")
                 clr_version_length = struct.unpack("<I", i[meta_data_offset + 12:meta_data_offset + 16])[0]
@@ -141,8 +166,10 @@ def get_assembly_guids(assembly_path):
                     for index in xrange(0x0c):
                         t_offset += row_type_widths[index] * row_counts[index]
 
+                    # todo Resolve type indexes
+                    # todo Add identification by parent and type
                     for index in xrange(row_counts[0x0c]):
-                        # parent_index = struct.unpack("<H", tilde[t_offset:t_offset + 2])[0]
+                        parent_index = struct.unpack("<H", tilde[t_offset:t_offset + 2])[0]
                         # type_index = struct.unpack("<H", tilde[t_offset + 2:t_offset + 4])[0]
                         if blob_heap_index_length == 2:
                             blob_index = struct.unpack("<H", tilde[t_offset + 4:t_offset + 6])[0]
@@ -153,7 +180,7 @@ def get_assembly_guids(assembly_path):
                         if guid_regex.match(data_value):
                             return {"mvid": extracted_mvid.lower(), "typelib_id": data_value.lower()}
                         t_offset += row_type_widths[0x0c]
-                return {"mvid": extracted_mvid.lower()}
+                    return {"mvid": extracted_mvid.lower()}
             except KeyboardInterrupt:
                 raise
             except:
@@ -168,7 +195,7 @@ def get_assembly_guids(assembly_path):
 if __name__ == "__main__":
     from argparse import ArgumentParser
 
-    version = "1.3.0"
+    version = "1.4.0"
 
     parser = ArgumentParser(
         prog=__file__,
