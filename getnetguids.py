@@ -2,6 +2,9 @@
 import pefile
 import struct
 import re
+import datetime
+import csv
+import hashlib
 
 guid_regex = re.compile("[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}")
 
@@ -47,6 +50,12 @@ def get_assembly_guids(assembly_path):
             return None
         if not is_dot_net_assembly(pe):
             return None
+            
+        #Compile TimeDateStamp
+        try:
+            compiled = get_compiletime(pe)
+        except Exception:
+            compiled = "Error"
 
         # Removed strict parsing and opted for simple searching method to support malformed assemblies
         with open(assembly_path, "rb") as assembly_file_handler:
@@ -178,9 +187,9 @@ def get_assembly_guids(assembly_path):
                             blob_index = struct.unpack("<I", tilde[t_offset + 4:t_offset + 8])[0]
                             data_value = read_blob(heaps["#Blob"][blob_index:])
                         if guid_regex.match(data_value):
-                            return {"mvid": extracted_mvid.lower(), "typelib_id": data_value.lower()}
+                            return {"mvid": extracted_mvid.lower(), "typelib_id": data_value.lower(), "compiled": compiled}
                         t_offset += row_type_widths[0x0c]
-                    return {"mvid": extracted_mvid.lower()}
+                    return {"mvid": extracted_mvid.lower(), "compiled": compiled}
             except KeyboardInterrupt:
                 raise
             except:
@@ -195,7 +204,7 @@ def get_assembly_guids(assembly_path):
 if __name__ == "__main__":
     from argparse import ArgumentParser
 
-    version = "1.4.0"
+    version = "1.4.1"
 
     parser = ArgumentParser(
         prog=__file__,
@@ -207,6 +216,8 @@ if __name__ == "__main__":
                         help="Paths to files or directories to scan")
     parser.add_argument('-r', '--recursive', default=False, required=False, action='store_true',
                         help="Scan paths recursively")
+    parser.add_argument('-c', '--csv', default=False, required=False, action='store_true',
+                        help="Save to CSV")
 
     args = parser.parse_args()
 
@@ -231,22 +242,40 @@ if __name__ == "__main__":
                         paths.append(p)
                     if isfile(p):
                         yield p, get_assembly_guids(p)
-
-    import hashlib
+    def get_compiletime(pe):
+        return datetime.datetime.fromtimestamp(pe.FILE_HEADER.TimeDateStamp)
+        
+    if args.csv:
+        theCSV = open('out.csv', 'wt')
+        writer=csv.writer(theCSV)
+        writer.writerow(('TYPELIB', 'MVID', 'HASH', 'COMPILED', 'PATH'))
+    else:
+        print "{0}\t\t\t\t\t{1}\t\t\t\t\t{2}\t\t\t\t\t{3}\t\t{4}".format('TYPELIB', 'MVID', 'HASH', 'COMPILED', 'PATH')
+    
     for file_path, result in scan_paths(args.path, args.recursive):
         if result is None:
             continue
         try:
             typelib_id = result["typelib_id"]
         except KeyError:
-            typelib_id = "None"
+            typelib_id = "None\t\t\t\t"
         try:
             mvid = result["mvid"]
         except KeyError:
             # Potentially should log these results as they should at least have an MVID
             continue
-
+        try:
+            compiled = result["compiled"]
+        except KeyError:
+            compiled = "None\t\t\t\t\t"
+            
         with open(file_path, 'rb') as f:
             s = hashlib.sha256(f.read()).hexdigest()
-
-        print "{0}\t{1}\t{2}\t{3}".format(typelib_id, mvid, s, file_path)
+            
+        if args.csv:
+            writer.writerow((typelib_id, mvid, s, compiled, file_path))
+        else:
+            print "{0}\t{1}\t{2}\t{3}\t{4}".format(typelib_id, mvid, s, compiled, file_path)
+            
+    if args.csv:        
+        theCSV.close()
