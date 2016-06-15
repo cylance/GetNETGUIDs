@@ -249,7 +249,7 @@ def get_assembly_guids(assembly_path):
 if __name__ == "__main__":
     from argparse import ArgumentParser
 
-    version = "1.4.1"
+    version = "1.4.2"
 
     parser = ArgumentParser(
         prog=__file__,
